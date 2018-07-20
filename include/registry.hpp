@@ -261,14 +261,14 @@ void register_functions(sol::state &lua, sf::RenderWindow &window,
 
 			//top left
 			sprite.setTextureRect(new_rect);
-			sprite.setPosition(ox*size.x, oy*size.y);
+			//sprite.setPosition(ox*size.x, oy*size.y);
 			window.draw(sprite);
 
 			//top middle
 			new_rect.left = tw;
 			new_rect.top = th;
 			sprite.setTextureRect(new_rect);
-			sprite.setPosition();
+			//sprite.setPosition();
 			window.draw(sprite);
 
 
