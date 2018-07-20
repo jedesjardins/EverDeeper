@@ -1,0 +1,5 @@
+*.DS_Store
+*.dSYM
+*.a
+*app
+*.o
