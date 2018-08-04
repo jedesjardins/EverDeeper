@@ -13,8 +13,8 @@ systems.controlPlayer = {
 
 			if input:state(KEYS[control.interact]) == KEYSTATE.PRESSED then
 				-- interact
-				events:send(em, events, dt, {"interact", id})
-				--[[
+				--events:send(em, events, dt, {"interact", id})
+				
 				local col = em:get(id, "collision")--ecs.components.collision[id]
 				local pos = em:get(id, "position")--ecs.components.position[id]
 
@@ -30,7 +30,6 @@ systems.controlPlayer = {
 				if changefloor then
 					ret = changefloor 
 				end
-				]]
 			end
 
 			if input:state(KEYS[control.show_inventory]) == KEYSTATE.PRESSED then
@@ -172,6 +171,7 @@ systems.interact = {
 
 			if output.overlap ~= 0 then
 				println("Interacted with", id2, int.message)
+				events:send(em, events, dt, {int.message})
 			end
 		end)
 	end

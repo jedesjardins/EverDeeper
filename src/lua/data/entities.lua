@@ -92,21 +92,12 @@ entities.ladder = {
 		x = "$1", y = "$2",
 		w = 1, h = 1
 	},
-	collision = {
-		offx = 0,
-		offy = 0,
-		w = 1,
-		h = 1
-	},
 	sprite = {
 		img = "$3",
 		framex = 1,
 		framey = 1,
 		framesx = 1,
 		framesy = 1
-	},
-	interact = {
-		message = "$4"
 	}
 }
 

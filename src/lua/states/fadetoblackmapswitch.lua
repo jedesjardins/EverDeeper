@@ -3,7 +3,7 @@ local state = State.new()
 function state:enter(blackboard)
 	
 	self.blackboard = blackboard
-	self.em = blackboard.em
+	self.ecs = blackboard.ecs
 	self.map = blackboard.map
 	self.timetoblack = 0.15
 	self.timeelapsed = 0

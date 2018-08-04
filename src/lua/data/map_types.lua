@@ -157,6 +157,23 @@ local function getPattern(grid, x, y)
 	return table.concat(pattern)
 end
 
+local function getBetterPattern(grid, i, j)
+	local pattern = 0
+	local value = grid[j][i]
+	pattern = pattern | (((grid[j-1] and grid[j-1][i-1] or 0) == value) and 1 or 0) << 7
+	pattern = pattern | (((grid[j-1] and grid[j-1][i] or 0) == value) and 1 or 0) << 6
+	pattern = pattern | (((grid[j-1] and grid[j-1][i+1] or 0) == value) and 1 or 0) << 5
+	pattern = pattern | (((grid[j] and grid[j][i-1] or 0) == value) and 1 or 0) << 4
+	pattern = pattern | (((grid[j] and grid[j][i+1] or 0) == value) and 1 or 0) << 3
+	pattern = pattern | (((grid[j+1] and grid[j+1][i-1] or 0) == value) and 1 or 0) << 2
+	pattern = pattern | (((grid[j+1] and grid[j+1][i] or 0) == value) and 1 or 0) << 1
+	pattern = pattern | (((grid[j+1] and grid[j+1][i+1] or 0) == value) and 1 or 0) << 0
+
+	pattern = pattern | (1 << (value + 8))
+
+	return pattern
+end
+
 local function fillAllPattern(tiles, grid, w, h, pattern, val)
 	for j = 1, h-2 do
 		for i = 1, w-2 do
@@ -353,15 +370,14 @@ function Floor:writeToFile(filename)
 	]]
 
 	local patterns = {}
-	local pattern = ""
+	local pattern = 0
 	for j = 0, self.h-1 do
 		for i = 0, self.w-1 do
-			pattern = getPattern(self.grid, i, j)
+			pattern = getBetterPattern(self.grid, i, j)
 
 			if patterns[pattern] and patterns[pattern] ~= self.tiles[j][i] then
-				println(patterns[pattern], self.tiles[j][i])
+
 			else
-				println(pattern, self.tiles[j][i])
 				patterns[pattern] = self.tiles[j][i]
 			end
 		end
@@ -379,8 +395,6 @@ function Floor:writeToFile(filename)
 	file:write("\nreturn patterns")
 	file:close()
 end
-
-
 
 
 
@@ -417,7 +431,7 @@ function MultiLevelDungeon.new(rect, options)
 	self.random:seed(self.seed)
 
 
-	for i = 1, self.random:random(1, 11) do
+	for i = 1, self.random:random(1, 5) do
 		floors[i] = Floor.new(rect,
 			{
 				seed = (options.seed or 0) + i,
@@ -432,15 +446,6 @@ function MultiLevelDungeon.new(rect, options)
 	self.floors = floors
 	self.floorNum = 1
 	self.floor = floors[self.floorNum]
-
-	self.listener = {
-		event = {"switch_down", "switch_up"}
-		receive = function(em, events, dt, message)
-			println(message[1])
-		end
-	}
-
-
 	return self
 end
 
@@ -464,6 +469,8 @@ local function fill(floor_obj, grid, x, y, room)
 		if floor[y][x] == 1 and not grid[y][x] then
 			room.size = room.size + 1
 			grid[y][x] = room
+			room.points[y] = room.points[y] or {}
+			room.points[y][x] = true
 
 			for _, dir in pairs(directions) do
 				local j = y + (dir.y or 0)
@@ -487,7 +494,7 @@ local function findRooms(floor_obj, grid, roomslist, floornum)
 			if floor[j][i] == 1
 				and not grid[j][i] then
 
-				table.insert(roomslist, {label = #roomslist+1, floor = floornum, size = 0, edges = {}})
+				table.insert(roomslist, {label = #roomslist+1, floor = floornum, size = 0, edges = {}, points = {}})
 				fill(floor_obj, grid, i, j, roomslist[#roomslist])
 			end
 		end
@@ -519,6 +526,7 @@ local function findLadderEdges(floor, next_floor, edges, topFloornum)
 	end
 end
 
+-- unnecessary, now saved in room.points
 local function getRoomPoints(floor, targetroom)
 	local points = {}
 
@@ -533,7 +541,7 @@ local function getRoomPoints(floor, targetroom)
 	return points
 end
 
-local function breadthfirstEdgeSearch(floor, edges, startroom, startpoints, depth)
+local function breadthfirstEdgeSearch(floor, edges, startroom, depth)
 	local queue = List.new()
 	local opened = {}
 	local finished = {}
@@ -547,13 +555,16 @@ local function breadthfirstEdgeSearch(floor, edges, startroom, startpoints, dept
 		{y = 1}
 	}
 
-	for i, point in ipairs(startpoints) do
-		queue:pushright(point)
-		paths[point] = {}
-		opened[point.y] = opened[point.y] or {}
-		opened[point.y][point.x] = true
+	-- create frontier from rooms points
+	for j, row in pairs(startroom.points) do
+		for i, val in pairs(row) do
+			local point = {x=i, y=j}
+			queue:pushright(point)
+			paths[point] = {}
+			opened[point.y] = opened[point.y] or {}
+			opened[point.y][point.x] = true
+		end
 	end
-
 
 	edges[startroom] = edges[startroom] or {}
 	edges[startroom].edges = edges[startroom].edges or {}
@@ -605,9 +616,8 @@ local function findHallwayEdges(floor, edges)
 	for j, row in pairs(floor) do
 		for i, room in pairs(row) do
 			if not finishedrooms[room] then
-				local roompoints = getRoomPoints(floor, room)
 
-				breadthfirstEdgeSearch(floor, edges, room, roompoints, 2)
+				breadthfirstEdgeSearch(floor, edges, room, 2)
 				finishedrooms[room] = true
 			end
 		end
@@ -627,23 +637,26 @@ local function solidifyEdge(map, edges, path)
 				pointIndex = map.random:random(1, #points)
 				point = points[pointIndex]
 
+				local tpointx, tpointy = map:tileFromGrid({point.x, point.y})
+				tile_point = {x = tpointx, y = tpointy}
+
 				map.ladders[parent.floor][point.y] = map.ladders[parent.floor][point.y] or {}
 				map.ladders[child.floor][point.y] = map.ladders[child.floor][point.y] or {}
 
 				if parent.floor < child.floor then
-					map.floors[parent.floor].em:createEntity("ladder", 
-						{point.x, point.y, "ladder_down", "switch_down"})
-					map.floors[child.floor].em:createEntity("ladder", 
-						{point.x, point.y, "ladder_up", "switch_up"})
-					--map.ladders[parent.floor][point.y][point.x] = "down"
-					--map.ladders[child.floor][point.y][point.x] = "up"
+					map.floors[parent.floor].em:createEntity("ladder",
+						{tile_point.x, tile_point.y, "ladder_down"})
+					map.floors[child.floor].em:createEntity("ladder",
+						{tile_point.x, tile_point.y, "ladder_up"})
+					map.ladders[parent.floor][point.y][point.x] = "down"
+					map.ladders[child.floor][point.y][point.x] = "up"
 				else
-					map.floors[parent.floor].em:createEntity("ladder", 
-						{point.x, point.y, "ladder_up", "switch_up"})
-					map.floors[child.floor].em:createEntity("ladder", 
-						{point.x, point.y, "ladder_down", "switch_down"})
-					--map.ladders[parent.floor][point.y][point.x] = "up"
-					--map.ladders[child.floor][point.y][point.x] = "down"
+					map.floors[parent.floor].em:createEntity("ladder",
+						{tile_point.x, tile_point.y, "ladder_up"})
+					map.floors[child.floor].em:createEntity("ladder",
+						{tile_point.x, tile_point.y, "ladder_down"})
+					map.ladders[parent.floor][point.y][point.x] = "up"
+					map.ladders[child.floor][point.y][point.x] = "down"
 				end
 
 			else if points.type == "hallway" then
@@ -746,6 +759,22 @@ function MultiLevelDungeon:init()
 	local startroom, endroom = createPath(self, edges)
 
 	-- place entrance
+	local starty, startrow = next(startroom.points)
+	local startx = next(startrow)
+
+	while self.ladders[1][starty] and self.ladders[1][starty][startx] do
+		starty, startrow = next(startroom.points, starty)
+		startx = next(startrow, startx)
+	end
+
+	local tstartx, tstarty = self:tileFromGrid({startx, starty})
+
+	self.startpoint = {x=tstartx, y=tstarty}
+	self.floors[1].em:createEntity("ladder",
+		{tstartx, tstarty, "ladder_up"})
+	self.ladders[1][starty] = self.ladders[1][starty] or {}
+	self.ladders[1][starty][startx] = "up"
+
 
 	-- place exit
 end
@@ -791,7 +820,6 @@ function MultiLevelDungeon:getNumFloors()
 end
 
 function MultiLevelDungeon:update()
-
 	local pos = self.floor.em:get(self.floor.em.player_id, "position")
 	if pos then
 		self.view:setCenter(pos.x*TILESIZE, -pos.y*TILESIZE)
@@ -819,7 +847,42 @@ function MultiLevelDungeon:tileFromGrid(coord)
 end
 
 function MultiLevelDungeon:interact(rect)
+	local directions = {
+		up = {y = 1},
+		down = {y = -1},
+		left = {x = -1},
+		right = {x = 1}
+	}
 
+	local mintx, minty = math.round(rect.x), math.round(rect.y)
+	local maxtx, maxty = math.round(rect.x + rect.w), math.round(rect.y + rect.h)
+
+	local mingx, mingy = self:gridFromTile{mintx, minty}
+	local maxgx, maxgy = self:gridFromTile{maxtx, maxty}
+
+	local z = self.floorNum
+	local ladder = true
+
+	for j = mingy, maxgy do
+		for i = mingx, maxgx do
+			ladder = self.ladders[z] and self.ladders[z][j] and self.ladders[z][j][i]
+			if ladder == "up" then
+				if z == 1 then
+					println("Exit")
+				end
+
+				return {{'push',
+						'fadetoblackmapswitch',
+						{map = self, ecs = self.ecs, dz = -1}}}
+
+			else if ladder == "down" then
+
+				return {{'push',
+						'fadetoblackmapswitch',
+						{map = self, ecs = self.ecs, dz = 1}}}
+			end end
+		end
+	end
 end
 
 function MultiLevelDungeon:collision(rect)

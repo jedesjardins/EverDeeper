@@ -96,7 +96,7 @@ end
 
 function EntityManager:set(uid, component_type, data)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist")
+		println("Error: Entity", uid, "does not exist, set")
 		return false
 	end
 
@@ -109,7 +109,7 @@ end
 
 function EntityManager:addComponent(uid, component_type, data)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist")
+		println("Error: Entity", uid, "does not exist, addComponent")
 		return false
 	end
 
@@ -127,7 +127,7 @@ end
 
 function EntityManager:getEntity(uid)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist")
+		println("Error: Entity", uid, "does not exist, get")
 		return nil
 	end
 
@@ -142,7 +142,7 @@ end
 
 function EntityManager:getComponent(uid, component_type)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist")
+		println("Error: Entity", uid, "does not exist, get")
 		return nil
 	end
 
@@ -152,7 +152,7 @@ end
 
 function EntityManager:deleteEntity(uid)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist")
+		println("Error: Entity", uid, "does not exist, delete")
 		return nil
 	end
 

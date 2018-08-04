@@ -6,8 +6,7 @@ local systems = require(LUA_FOLDER .. 'data.systems')
 local Maps = require(LUA_FOLDER .. 'data.map_types')
 local map_generators = require(LUA_FOLDER .. 'data.map_generators')
 
-local TestSystem =
-{
+local TestSystem = {
 	update = function(em, events, dt, input)
 		println("Update function")
 		events:send({"test_event", "Ayyooo"})
@@ -24,7 +23,6 @@ local TestSystem =
 local state = State.new()
 
 function state:enter()
-
 	local map = Maps.MultiLevelDungeon.new({0, 0, 96, 48},
 		{
 			seed = os.time(),
@@ -38,30 +36,30 @@ function state:enter()
 
 	map.view = View.new()
 	map.view:setCenter(0, 0);
-	map.view:setSize(TILESIZE*16,TILESIZE*12)
+	map.view:setSize(TILESIZE*32,TILESIZE*24)
 
 
 	local ecs = ECS.new(map.floor.em)
 	--ecs.em:addPresets(entities)
 
 	self:registerSystems(ecs)
-	ecs:addSystem("map", map.listener)
 
-	ecs.em.player_id = ecs.em:createEntity("man", {0, 0})
+	ecs.em.player_id = ecs.em:createEntity("man", {map.startpoint.x, map.startpoint.y})
 	ecs.em:createEntity("sword", {0, -2})
 	ecs.em:createEntity("sword", {0, -3})
 	ecs.em:createEntity("block", {2, 2})
 	ecs.em:createEntity("block", {-2, 2})
 
 	ecs.map = map
+	map.ecs = ecs
 	self.ecs = ecs
 	self.map = map
+
 
 	self.toggle_console = false
 	self.toggle_demo = false
 	self.env = createSafeEnvironment()
 	self:registerConsoleFunctions()
-
 end
 
 function state:registerSystems(ecs)
@@ -175,6 +173,11 @@ function state:update(dt, input)
 	if input:state(KEYS["M"]) == KEYSTATE.PRESSED then
 		--deepPrint("em", self.ecs.em, 0)
 		return {{"switch", "map_editor", {map = self.map}}}
+	end
+
+	if input:state(KEYS["N"]) == KEYSTATE.PRESSED then
+		--deepPrint("em", self.ecs.em, 0)
+		return {{"push", "fadetoblackmapswitch", {ecs = self.ecs, map = self.map}}}
 	end
 
 	if input:state(KEYS["C"]) == KEYSTATE.PRESSED then

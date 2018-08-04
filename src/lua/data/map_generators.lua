@@ -241,6 +241,24 @@ end
 
 generators.allPatterns = allPatterns
 
+local function getBetterPattern(grid, i, j)
+	local pattern = 0
+	local value = grid[j][i]
+
+	pattern = pattern | (((grid[j-1] and grid[j-1][i-1] or 0) == value) and 1 or 0) << 7
+	pattern = pattern | (((grid[j-1] and grid[j-1][i] or 0) == value) and 1 or 0) << 6
+	pattern = pattern | (((grid[j-1] and grid[j-1][i+1] or 0) == value) and 1 or 0) << 5
+	pattern = pattern | (((grid[j] and grid[j][i-1] or 0) == value) and 1 or 0) << 4
+	pattern = pattern | (((grid[j] and grid[j][i+1] or 0) == value) and 1 or 0) << 3
+	pattern = pattern | (((grid[j+1] and grid[j+1][i-1] or 0) == value) and 1 or 0) << 2
+	pattern = pattern | (((grid[j+1] and grid[j+1][i] or 0) == value) and 1 or 0) << 1
+	pattern = pattern | (((grid[j+1] and grid[j+1][i+1] or 0) == value) and 1 or 0) << 0
+
+	pattern = pattern | (1 << (value + 8))
+
+	return pattern
+end
+
 local function getPattern(grid, x, y)
 	local pattern = {}
 
@@ -252,6 +270,23 @@ local function getPattern(grid, x, y)
 	end
 
 	return table.concat(pattern)
+end
+
+local function getBetterPattern(grid, i, j)
+	local pattern = 0
+	local value = grid[j][i]
+	pattern = pattern | (((grid[j-1] and grid[j-1][i-1] or 0) == value) and 1 or 0) << 7
+	pattern = pattern | (((grid[j-1] and grid[j-1][i] or 0) == value) and 1 or 0) << 6
+	pattern = pattern | (((grid[j-1] and grid[j-1][i+1] or 0) == value) and 1 or 0) << 5
+	pattern = pattern | (((grid[j] and grid[j][i-1] or 0) == value) and 1 or 0) << 4
+	pattern = pattern | (((grid[j] and grid[j][i+1] or 0) == value) and 1 or 0) << 3
+	pattern = pattern | (((grid[j+1] and grid[j+1][i-1] or 0) == value) and 1 or 0) << 2
+	pattern = pattern | (((grid[j+1] and grid[j+1][i] or 0) == value) and 1 or 0) << 1
+	pattern = pattern | (((grid[j+1] and grid[j+1][i+1] or 0) == value) and 1 or 0) << 0
+
+	pattern = pattern | (1 << (value + 8))
+
+	return pattern
 end
 
 local function learnTilesFromMap(grid, tile, w, h, random)
@@ -289,7 +324,8 @@ local function learnTilesFromPatterns(grid, tile, w, h, random)
 	for j = 0, h-1 do
 		tile[j] = {}
 		for i = 0, w-1 do
-			tile[j][i] = patterns[getPattern(grid, i, j)] or 0
+			local pattern = getBetterPattern(grid, i, j)
+			tile[j][i] = patterns[pattern] or 0
 		end
 	end
 end
