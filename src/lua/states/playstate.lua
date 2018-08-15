@@ -34,21 +34,21 @@ function state:enter()
 	map:init()
 	map:render()
 
-	map.view = View.new()
-	map.view:setCenter(0, 0);
-	map.view:setSize(TILESIZE*32,TILESIZE*24)
-
-
 	local ecs = ECS.new(map.floor.em)
-	--ecs.em:addPresets(entities)
 
 	self:registerSystems(ecs)
 
+	local view = View.new()
+	view:setCenter(map.startpoint.x*TILESIZE, -map.startpoint.y*TILESIZE);
+	view:setSize(TILESIZE*32,TILESIZE*24)
+
+	ecs.em.camera_id = ecs.em:createEntity("camera", {view, "follow"})
+
 	ecs.em.player_id = ecs.em:createEntity("man", {map.startpoint.x, map.startpoint.y})
-	ecs.em:createEntity("sword", {0, -2})
-	ecs.em:createEntity("sword", {0, -3})
-	ecs.em:createEntity("block", {2, 2})
-	ecs.em:createEntity("block", {-2, 2})
+	ecs.em:createEntity("sword", {map.startpoint.x, map.startpoint.y+2})
+	--ecs.em:createEntity("sword", {map.startpoint.x, map.startpoint.y-3})
+	ecs.em:createEntity("block", {map.startpoint.x+2, map.startpoint.y+2})
+	--ecs.em:createEntity("block", {-2, 2})
 
 	ecs.map = map
 	map.ecs = ecs
@@ -64,6 +64,7 @@ end
 
 function state:registerSystems(ecs)
 	ecs:addSystem("controlPlayer", systems.controlPlayer)
+	ecs:addSystem("controlCamera", systems.controlCamera)
 	ecs:addSystem("interact", systems.interact)
 	ecs:addSystem("changePosition", systems.changePosition)
 	ecs:addSystem("velocity", systems.velocity)
@@ -167,7 +168,7 @@ end
 function state:update(dt, input)
 
 	if input:state(KEYS["Escape"]) == KEYSTATE.PRESSED then
-		return {{"pop", 1}}
+		return {{"switch", "menustate"}}
 	end
 
 	if input:state(KEYS["M"]) == KEYSTATE.PRESSED then
@@ -207,7 +208,8 @@ end
 
 
 function state:draw()
-	self.map.view:makeTarget()
+	self.ecs.em:getComponent(self.ecs.em.camera_id, "camera").view:makeTarget()
+	--self.map.view:makeTarget()
 	draw(self.map.floor.sprite)
 	self.ecs:draw()
 end

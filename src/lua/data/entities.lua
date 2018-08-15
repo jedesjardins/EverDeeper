@@ -1,5 +1,12 @@
 local entities = {}
 
+entities.camera = {
+	camera = {
+		view = "$1",
+		behavior = "$2"
+	}
+}
+
 entities.man = {
 	control = {
 		up = "W",
@@ -14,6 +21,7 @@ entities.man = {
 		drop_item = "R",
 		interact = "Return"
 	},
+	interest = 1,
 	position = {
 		x = "$1", y = "$2",
 		w = 12/16, h = 17/16
@@ -22,7 +30,8 @@ entities.man = {
 		offx = 0,
 		offy = -2.5/16,
 		w = 12/16,
-		h = 14/16
+		h = 14/16,
+		class = "regular"
 	},
 	movement = {
 		tps = 5
@@ -123,6 +132,7 @@ entities.ladder = {
 
 entities.sword = {
 	held = false, -- entity holding this item
+	interest = 1,
 	item = {
 		class = "weapon",
 		stackable = false,
@@ -136,7 +146,7 @@ entities.sword = {
 				offx = 2/16,
 				offy = 0,
 				w = 12/16,
-				h = 5/16
+				h = 5/16,
 			},
 			actions = {
 				attack = {
@@ -193,7 +203,8 @@ entities.sword = {
 		offx = 0,
 		offy = 0,
 		w = 1,
-		h = 5/16
+		h = 5/16,
+		class = "ignore"
 	},
 	sprite = {
 		img = "sword",
@@ -213,7 +224,8 @@ entities.block = {
 		offx = 0,
 		offy = 0,
 		w = 1,
-		h = 1
+		h = 1,
+		class = "regular"
 	},
 	sprite = {
 		img = "block",

@@ -25,6 +25,7 @@ function state:update(dt, input)
 	local ecs = self.ecs
 	local em = ecs.em
 	local player_id = em.player_id
+	local camera_id = em.camera_id
 	local map = self.map
 
 	--TODO Remove this
@@ -32,6 +33,7 @@ function state:update(dt, input)
 
 	local hand = em:get(player_id, "hand")
 	local player = em:deleteEntity(player_id)
+	local camera = em:deleteEntity(camera_id)
 	local item = false
 	if hand then
 		item = em:deleteEntity(hand)
@@ -40,6 +42,7 @@ function state:update(dt, input)
 	ecs.em = map.floors[map:getFloor()].em
 	em = ecs.em
 	em.player_id = em:addEntity(player)
+	em.camera_id = em:addEntity(camera)
 
 	if item then
 		hand = em:addEntity(item)

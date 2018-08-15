@@ -24,6 +24,10 @@ function math.pow(num, co)
 	return res
 end
 
+function math.lerp(a, b, t)
+	return a + (b-a)*(t or .1)
+end
+
 function table.join(t1,t2)
     for i=1,#t2 do
         t1[#t1+1] = t2[i]

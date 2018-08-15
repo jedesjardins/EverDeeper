@@ -84,6 +84,43 @@ systems.controlPlayer = {
 	end
 }
 
+systems.controlCamera = {
+	update = function(em, events, dt, input, map)
+
+		local interest_distance_max = 6
+
+		em:foreachWith({"camera"}, function(id, components)
+			local view = components.camera.view
+
+			local player_pos = em:get(em.player_id, "position")
+
+			local view_pos = {x = player_pos.x, y = player_pos.y}
+			local count = 1
+
+			em:foreachWith({"interest", "position"}, function(id, components)
+				if id == em.player_id or id == em:get(em.player_id, "hand") then return end
+
+				local position = components.position
+				local distance = math.sqrt(math.pow(position.x-player_pos.x, 2) + math.pow(position.y-player_pos.y, 2))
+				--local distance = math.abs(position.x-player_pos.x) + math.abs(position.y-player_pos.y)
+				-- as distance gets larger, influence should increase to a maximum of 1
+				local affector = components.interest * (distance/interest_distance_max) --((15-distance)/15)
+				if distance < interest_distance_max then
+					view_pos.x = view_pos.x + components.position.x*affector
+					view_pos.y = view_pos.y + components.position.y*affector
+					count = count + affector
+				end
+			end)
+			
+			local start = view:getCenter({}) 
+			view:setCenter(
+					math.lerp(start[1], view_pos.x*TILESIZE/count),
+					math.lerp(start[2], -view_pos.y*TILESIZE/count)
+				)
+		end)
+	end
+}
+
 systems.velocity = {
 	update = function(em, events, dt, input, map)
 		em:foreachWith({"velocity", "position"}, function(id, components)
@@ -178,19 +215,110 @@ systems.interact = {
 }
 
 systems.collision = {
-	event = {"collide"},
+	event = {"item collide", "collide"},
 	receive = function(em, events, dt, message)
 		local command = message[1]
-		local id = message[2]
-		local id2 = message[3]
-		local vec = message[4]
 
-		events:send(em, events, dt, {"change position", id, Vec2f.new(vec.x/2, vec.y/2)})
-		events:send(em, events, dt, {"change position", id2, Vec2f.new(-vec.x/2, -vec.y/2)})
+		if command == "item collide" then
+			local eid = message[2]
+			local iid = message[3]
+			local item = message[4]
+
+			if item.projectile then
+				events:send(em, events, dt, {"projectile hit", iid, eid})
+				events:send(em, events, dt, {"deal collision damage", eid, iid})
+			else
+				local held = em:get(iid, "held")
+				if not held then
+					events:send(em, events, dt, {"pickup item", eid, iid})
+				else
+					if eid ~= held then
+						-- deal damage
+						events:send(em, events, dt, {"deal item damage", held, iid, eid})
+					end
+				end
+			end
+
+		else if command == "collide" then
+			local id1 = message[2]
+			local col1 = message[3]
+			local id2 = message[4]
+			local col2 = message[5]
+			local vec = message[6]
+
+			-- if both match, move both
+
+			if col1.class == col2.class then
+				events:send(em, events, dt, {"change position", id1, Vec2f.new(vec.x/2, vec.y/2)})
+				events:send(em, events, dt, {"change position", id2, Vec2f.new(-vec.x/2, -vec.y/2)})
+			else if col1.class == "pushable" then
+				events:send(em, events, dt, {"change position", id1, Vec2f.new(vec.x, vec.y)})
+			else if col2.class == "pushable" then
+				events:send(em, events, dt, {"change position", id2, Vec2f.new(-vec.x, -vec.y)})
+			else if col1.class == "immobile" then
+				events:send(em, events, dt, {"change position", id2, Vec2f.new(-vec.x, -vec.y)})
+			else if col2.class == "immobile" then
+				events:send(em, events, dt, {"change position", id1, Vec2f.new(vec.x, vec.y)})
+			end end end end end
+		end end
 	end,
 	update = function(em, events, dt, input, map)
 		local qt = false
+
 		if map then
+			qt = QuadTree.new(map.x, map.y, map.w, map.h)
+		else
+			qt = QuadTree.new(0, 0, 50, 50)
+		end
+
+		em:foreachWith({"collision", "position"}, function(id, components)
+			local pos = components.position
+			local col = components.collision
+			qt:insert(id, {x=pos.x+col.offx, y=pos.y+col.offy, w=col.w, h=col.h})
+		end)
+
+		em:foreachWith({"collision", "position"}, function(id, components)
+			local pos = components.position
+			local col = components.collision
+			if col.class == "ignore" then return end
+
+			local ids = qt:retrieve({x=pos.x+col.offx, y=pos.y+col.offy, w=col.w, h=col.h})
+
+			for _, id2 in ipairs(ids) do
+				local pos2 = em:get(id2, "position")
+				local col2 = em:get(id2, "collision")
+
+				if id ~= id2 and pos2 and col2 then
+					local output = {overlap = 0}
+					collision_check(
+							{x=pos.x+col.offx, y=pos.y+col.offy, w=col.w, h=col.h, rx=pos.x, ry=pos.y, r=pos.r},
+							{x=pos2.x+col2.offx, y=pos2.y+col2.offy, w=col2.w, h=col2.h, rx=pos2.x, ry=pos2.y, r=pos2.r},
+							output)
+
+					local overlap = output.overlap
+
+					if overlap ~= 0 then
+
+						local item = em:get(id, "item")
+						local item2 = em:get(id2, "item")
+
+						if item and not item2 then
+							events:send(em, events, dt, {"item collide", id2, id, item})
+						else if item2 and not item then
+							events:send(em, events, dt, {"item collide", id, id2, item2})
+						else
+							if col2.class ~= "ignore" then
+								events:send(em, events, dt, {"collide", id, col, id2, col2, Vec2f.new(output.x, output.y)})
+								events:send(em, events, dt, {"deal collision damage", id, id2})
+							end
+						end end
+					end
+				end
+			end
+		end)
+
+		if map then
+			-- map collision loop
 			em:foreachWith({"collision", "position"}, function(id, components)
 				local pos = components.position
 				local col = components.collision
@@ -222,16 +350,9 @@ systems.collision = {
 				end
 			end)
 			qt = QuadTree.new(map.x, map.y, map.w, map.h)
-		else
-			qt = QuadTree.new(0, 0, 50, 50)
 		end
 
-		em:foreachWith({"collision", "position"}, function(id, components)
-			local pos = components.position
-			local col = components.collision
-			qt:insert(id, {x=pos.x+col.offx, y=pos.y+col.offy, w=col.w, h=col.h})
-		end)
-
+		--[[
 		em:foreachWith({"collision", "position"}, function(id, components)
 			local pos = components.position
 			local col = components.collision
@@ -283,6 +404,7 @@ systems.collision = {
 				end
 			end
 		end)
+		]]
 
 		qt:clear()
 	end

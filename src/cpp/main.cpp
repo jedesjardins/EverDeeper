@@ -48,7 +48,7 @@ int main(int argc, char* args[])
 		ImGui::SFML::Update(window, dt);
 		running &= input.update(window);
 
-		window.clear({0, 0, 0, 255});
+		window.clear({100, 100, 100, 255});
 		running &= (bool)update(dt.asSeconds(), input);
 		ImGui::SFML::Render(window);
 		window.display();

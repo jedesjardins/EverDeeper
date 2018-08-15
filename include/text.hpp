@@ -7,16 +7,17 @@
 
 #include <string>
 
-class Text
+class Text : public sf::Drawable
 {
 private:
+	sf::Sprite sprite;
+	sf::Texture texture;
 	sf::Font font;
-	sf::RenderWindow window;
+
+	virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
 
 public:
-	Text(std::string fontname);
-
-	sf::Text drawText(float x, float y, float s);
+	Text(sf::Font &font, std::string string);
 };
 
 #endif

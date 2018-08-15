@@ -2,7 +2,7 @@
 local StateManager = {}
 StateManager.stack = {}
 
-local state = require(LUA_FOLDER .. 'states.playstate')
+local state = require(LUA_FOLDER .. 'states.menustate')
 
 state:enter()
 

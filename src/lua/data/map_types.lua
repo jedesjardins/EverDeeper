@@ -820,10 +820,7 @@ function MultiLevelDungeon:getNumFloors()
 end
 
 function MultiLevelDungeon:update()
-	local pos = self.floor.em:get(self.floor.em.player_id, "position")
-	if pos then
-		self.view:setCenter(pos.x*TILESIZE, -pos.y*TILESIZE)
-	end
+	-- update animated tiles
 end
 
 function MultiLevelDungeon:gridFromTile(coord)

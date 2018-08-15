@@ -96,7 +96,7 @@ end
 
 function EntityManager:set(uid, component_type, data)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist, set")
+		println("Error: Entity", uid, "does not exist, set", component_type)
 		return false
 	end
 
@@ -127,7 +127,7 @@ end
 
 function EntityManager:getEntity(uid)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist, get")
+		println("Error: Entity", uid, "does not exist, get", "no component")
 		return nil
 	end
 
@@ -142,7 +142,7 @@ end
 
 function EntityManager:getComponent(uid, component_type)
 	if not self.ids[uid] then
-		println("Error: Entity", uid, "does not exist, get")
+		println("Error: Entity", uid, "does not exist, get", component_type)
 		return nil
 	end
 
